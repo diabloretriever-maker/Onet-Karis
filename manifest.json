@@ -1,0 +1,13 @@
+{
+  "name": "Onet Kendaraan",
+  "short_name": "Onet",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#fff6e0",
+  "theme_color": "#ffb300",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "asset/icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

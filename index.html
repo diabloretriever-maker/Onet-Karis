@@ -1,1 +1,78 @@
-<h1>Halo dari iPad</h1>.
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Onet">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>Onet Kendaraan</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="start" class="screen on">
+  <h1 class="title">Onet Kendaraan</h1>
+  <div class="modes">
+    <div class="big" data-mode="huruf" style="border-color:#e53935">
+      <div class="bg">A</div><div class="bl">Huruf</div>
+    </div>
+    <div class="big" data-mode="angka" style="border-color:#1e88e5">
+      <div class="bg">1</div><div class="bl">Angka</div>
+    </div>
+    <div class="big" data-mode="campur" style="border-color:#43a047">
+      <div class="bg">A1</div><div class="bl">Campur</div>
+    </div>
+  </div>
+  <div class="ib mute" style="left:16px;top:14px"></div>
+  <div class="ib gear" id="gear">&#9881;&#65039;</div>
+</div>
+
+<div id="sets" class="screen">
+  <div class="ib" id="back" style="left:16px;top:14px">&#9664;</div>
+  <h2 class="title2" id="setsTitle"></h2>
+  <div id="setList"></div>
+</div>
+
+<div id="game" class="screen">
+  <div id="board"></div>
+  <svg id="lines" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="ib" id="home" style="left:16px;top:10px">&#127968;</div>
+  <div class="ib" id="hint" style="right:168px;top:10px">&#128161;</div>
+  <div class="ib" id="shuf" style="right:92px;top:10px">&#128256;</div>
+  <div class="ib mute" style="right:16px;top:10px"></div>
+</div>
+
+<div id="end" class="screen">
+  <div class="endTitle">Hebat!</div>
+  <div id="recap"></div>
+  <div class="endBtns">
+    <div class="btn" id="skip">Lewati &#9654;</div>
+    <div class="btn" id="again">Main lagi</div>
+    <div class="btn" id="menu">Menu</div>
+  </div>
+</div>
+
+<div id="settings">
+  <div class="panel">
+    <h3>Pengaturan</h3>
+    <div class="row">
+      <div class="opt" data-k="0">Mudah</div>
+      <div class="opt" data-k="1">Klasik</div>
+    </div>
+    <p class="note">Klasik hanya berlaku di papan &ldquo;Semua&rdquo; dan Campur. Pasangan harus tersambung dengan garis yang berbelok paling banyak dua kali.</p>
+    <p class="note" id="voiceNote"></p>
+    <div class="btn" id="closeSet">Tutup</div>
+  </div>
+</div>
+
+<div id="fx"></div>
+
+<div id="rotate"><div>&#128260;<br>Putar iPad-nya, ya</div></div>
+
+<script src="game.js"></script>
+</body>
+</html>
