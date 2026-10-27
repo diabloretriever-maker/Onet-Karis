@@ -17,14 +17,14 @@
 <div id="start" class="screen on">
   <h1 class="title">Onet Kendaraan</h1>
   <div class="modes">
-    <div class="big" data-mode="huruf" style="border-color:#e53935">
-      <div class="bg">A</div><div class="bl">Huruf</div>
+    <div class="big" data-track="huruf" style="border-color:#e53935">
+      <div class="bg">A</div><div class="bl">Huruf</div><div class="lv" id="lv-huruf"></div>
     </div>
-    <div class="big" data-mode="angka" style="border-color:#1e88e5">
-      <div class="bg">1</div><div class="bl">Angka</div>
+    <div class="big" data-track="angka" style="border-color:#1e88e5">
+      <div class="bg">1</div><div class="bl">Angka</div><div class="lv" id="lv-angka"></div>
     </div>
-    <div class="big" data-mode="campur" style="border-color:#43a047">
-      <div class="bg">A1</div><div class="bl">Campur</div>
+    <div class="big" id="campurBtn" style="border-color:#43a047">
+      <div class="bg">A1</div><div class="bl">Campur</div><div class="lv" id="lv-campur"></div>
     </div>
   </div>
   <div class="ib mute" style="left:16px;top:14px"></div>
@@ -56,6 +56,24 @@
   </div>
 </div>
 
+<div id="check" class="screen">
+  <div class="ib" id="homeC" style="left:16px;top:10px">&#127968;</div>
+  <div class="ib" id="rep" style="right:16px;top:10px">&#128264;</div>
+  <div class="ctitle">Tebak!</div>
+  <div id="dots"></div>
+  <div id="choices"></div>
+</div>
+
+<div id="result" class="screen">
+  <div id="rstars"></div>
+  <div id="rmsg"></div>
+  <div id="rsub"></div>
+  <div class="endBtns">
+    <div class="btn" id="rAgain">Main lagi</div>
+    <div class="btn" id="rMenu">Menu</div>
+  </div>
+</div>
+
 <div id="settings">
   <div class="panel">
     <h3>Pengaturan</h3>
@@ -63,9 +81,11 @@
       <div class="opt" data-k="0">Mudah</div>
       <div class="opt" data-k="1">Klasik</div>
     </div>
-    <p class="note">Klasik hanya berlaku di papan &ldquo;Semua&rdquo; dan Campur. Pasangan harus tersambung dengan garis yang berbelok paling banyak dua kali.</p>
+    <p class="note">Klasik hanya berlaku di papan A&ndash;Z, 1&ndash;10, dan Campur. Pasangan harus tersambung dengan garis yang berbelok paling banyak dua kali.</p>
+    <div id="progRows"></div>
+    <div class="btn small" id="freeBtn">Pilih papan bebas</div>
     <p class="note" id="voiceNote"></p>
-    <div class="btn" id="closeSet">Tutup</div>
+    <div class="btn small" id="closeSet">Tutup</div>
   </div>
 </div>
 

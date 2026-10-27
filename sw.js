@@ -1,6 +1,6 @@
 // Bump this version every time you upload changed files,
 // otherwise the iPad keeps playing the old cached copy.
-var CACHE = 'onet-v1';
+var CACHE = 'onet-v2';
 
 var FILES = [
   './',

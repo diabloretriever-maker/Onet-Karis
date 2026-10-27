@@ -70,7 +70,7 @@
         { label: 'G – L', keys: 'GHIJKL'.split(''), R: 3, C: 4 },
         { label: 'M – R', keys: 'MNOPQR'.split(''), R: 3, C: 4 },
         { label: 'S – Z', keys: 'STUVWXYZ'.split(''), R: 4, C: 4 },
-        { label: 'Semua', keys: ALPHA, R: 6, C: 8, big: true }
+        { label: 'A – Z', keys: ALPHA, R: 6, C: 8, big: true }
       ]
     },
     angka: {
@@ -79,11 +79,32 @@
       list: [
         { label: '1 – 5', keys: nums(1, 5), R: 2, C: 5 },
         { label: '6 – 10', keys: nums(6, 10), R: 2, C: 5 },
-        { label: 'Semua', keys: nums(1, 10), R: 4, C: 5, big: true }
+        { label: '1 – 10', keys: nums(1, 10), R: 4, C: 5, big: true }
       ]
     },
     campur: { label: 'Campur', keys: ALPHA.concat(nums(1, 10)), R: 6, C: 8, big: true }
   };
+
+  // Learning tracks. Each group opens after the child passes its check on PASS_DAYS different days.
+  var TRACKS = {
+    huruf: {
+      name: 'Huruf',
+      groups: ['ABCDEF'.split(''), 'GHIJKL'.split(''), 'MNOPQR'.split(''), 'STUVWXYZ'.split('')],
+      labels: ['A – F', 'G – L', 'M – R', 'S – Z'],
+      final: SETS.huruf.list[4]
+    },
+    angka: {
+      name: 'Angka',
+      groups: [nums(1, 5), nums(6, 10)],
+      labels: ['1 – 5', '6 – 10'],
+      final: SETS.angka.list[2]
+    }
+  };
+  var TRACK_NAMES = ['huruf', 'angka'];
+  var PASS_DAYS = 2;
+  var REVIEW = 2;
+  // Board size (rows, columns) for a given number of pairs.
+  var GRIDS = { 5: [2, 5], 6: [3, 4], 7: [2, 7], 8: [4, 4], 10: [4, 5] };
 
   function $(id) { return document.getElementById(id); }
 
@@ -114,6 +135,35 @@
   }
 
   var settings = { klasik: loadFlag('klasik'), muted: loadFlag('muted') };
+
+  // ---------- saved progress ----------
+
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function freshProgress() {
+    return { huruf: { level: 0, passes: [] }, angka: { level: 0, passes: [] } };
+  }
+
+  function loadProgress() {
+    try {
+      var p = JSON.parse(window.localStorage.getItem('onet.progress'));
+      if (p && p.huruf && p.angka) { return p; }
+    } catch (e) { /* ignore */ }
+    return freshProgress();
+  }
+
+  function saveProgress() {
+    try { window.localStorage.setItem('onet.progress', JSON.stringify(progress)); } catch (e) { /* ignore */ }
+  }
+
+  var progress = loadProgress();
+
+  function trackDone(name) {
+    return progress[name].level >= TRACKS[name].groups.length;
+  }
 
   // ---------- timers ----------
 
@@ -231,7 +281,7 @@
 
   // ---------- screens ----------
 
-  var MAIN = ['start', 'sets', 'game'];
+  var MAIN = ['start', 'sets', 'game', 'check', 'result'];
   function show(id) {
     for (var i = 0; i < MAIN.length; i++) {
       $(MAIN[i]).className = 'screen' + (MAIN[i] === id ? ' on' : '');
@@ -242,9 +292,11 @@
     clearTimers();
     stopSpeech();
     G = null;
+    Q = null;
     $('end').className = 'screen';
     $('board').innerHTML = '';
     clearLines();
+    refreshStart();
     show('start');
   }
 
@@ -715,6 +767,7 @@
     }
 
     $('skip').className = 'btn';
+    $('skip').innerHTML = G.set.track ? 'Lanjut &#9654;' : 'Lewati &#9654;';
     $('again').className = 'btn hide';
     $('menu').className = 'btn hide';
     $('end').className = 'screen on';
@@ -735,25 +788,197 @@
   function finishRecap() {
     var lit = $('recap').getElementsByClassName('lit');
     while (lit.length) { lit[0].classList.remove('lit'); }
+    if (G && G.set.track) { startCheck(); return; }
     $('skip').className = 'btn hide';
     $('again').className = 'btn';
     $('menu').className = 'btn';
   }
 
-  // ---------- set picker ----------
+  // ---------- learning tracks ----------
 
-  function openSets(mode) {
-    var def = SETS[mode];
-    $('setsTitle').textContent = def.title;
+  function startTrack(name) {
+    var T = TRACKS[name], P = progress[name], set, i;
+    if (P.level < T.groups.length) {
+      var L = P.level;
+      var prev = [];
+      for (i = 0; i < L; i++) { prev = prev.concat(T.groups[i]); }
+      // The current group plus a couple of earlier letters/numbers for review.
+      var keys = T.groups[L].concat(shuffle(prev).slice(0, REVIEW));
+      var g = GRIDS[keys.length];
+      set = { label: T.labels[L], keys: keys, R: g[0], C: g[1], track: name, level: L,
+              checkKeys: T.groups[L], checkPool: T.groups[L] };
+    } else {
+      var f = T.final, all = [];
+      for (i = 0; i < T.groups.length; i++) { all = all.concat(T.groups[i]); }
+      set = { label: f.label, keys: f.keys, R: f.R, C: f.C, big: true, track: name, level: -1,
+              checkKeys: null, checkPool: all };
+    }
+    startGame(set);
+  }
+
+  function refreshStart() {
+    for (var i = 0; i < TRACK_NAMES.length; i++) {
+      var n = TRACK_NAMES[i], P = progress[n], T = TRACKS[n];
+      var lv = $('lv-' + n);
+      if (P.level < T.groups.length) {
+        var dots = '';
+        for (var j = 0; j < PASS_DAYS; j++) { dots += j < P.passes.length ? '●' : '○'; }
+        lv.textContent = T.labels[P.level] + '  ' + dots;
+      } else {
+        lv.textContent = 'Selesai ★';
+      }
+    }
+    var open = trackDone('huruf') && trackDone('angka');
+    $('campurBtn').className = 'big' + (open ? '' : ' locked');
+    $('lv-campur').textContent = open ? 'Terbuka' : '🔒';
+  }
+
+  // ---------- Tebak: recognition check ----------
+
+  var Q = null;
+
+  function isNum(k) { return k.charAt(0) === '#'; }
+
+  function nameFor(k) {
+    return isNum(k) ? NUMBERS[parseInt(k.slice(1), 10)][0] : LETTERS[k][0];
+  }
+
+  function promptFor(k) {
+    return (isNum(k) ? 'Cari angka ' : 'Cari huruf ') + nameFor(k) + '!';
+  }
+
+  function startCheck() {
+    var set = G.set;
+    var keys = set.checkKeys ? shuffle(set.checkKeys.slice()) : shuffle(set.checkPool.slice()).slice(0, 6);
+    Q = { set: set, keys: keys, i: 0, correct: 0, first: true, locked: false, marks: [] };
+    $('end').className = 'screen';
+    show('check');
+    nextQ();
+  }
+
+  function drawDots() {
+    var d = $('dots');
+    d.innerHTML = '';
+    for (var i = 0; i < Q.keys.length; i++) {
+      var cls = 'dot';
+      if (i < Q.marks.length) { cls += Q.marks[i] ? ' ok' : ' retry'; } else if (i === Q.i) { cls += ' cur'; }
+      el('span', cls, d);
+    }
+  }
+
+  function nextQ() {
+    if (!Q) { return; }
+    if (Q.i >= Q.keys.length) { finishCheck(); return; }
+    var target = Q.keys[Q.i];
+    var pool = [], i;
+    for (i = 0; i < Q.set.checkPool.length; i++) {
+      if (Q.set.checkPool[i] !== target) { pool.push(Q.set.checkPool[i]); }
+    }
+    var opts = shuffle([target].concat(shuffle(pool).slice(0, 2)));
+    Q.first = true;
+    Q.locked = false;
+    var box = $('choices');
+    box.innerHTML = '';
+    for (i = 0; i < opts.length; i++) {
+      (function (k) {
+        // Letter or digit only, no picture and a neutral border, so nothing gives the answer away.
+        var t = el('div', 'tile static ctile', box);
+        t.setAttribute('data-k', k);
+        var inner = el('div', 'inner', t);
+        var g = el('div', 'glyph cg', inner);
+        g.textContent = isNum(k) ? k.slice(1) : k;
+        tap(t, function () { onChoice(k, t); });
+      })(opts[i]);
+    }
+    drawDots();
+    later(function () { speak(promptFor(target)); }, 450);
+  }
+
+  function onChoice(k, node) {
+    if (!Q || Q.locked) { return; }
+    var target = Q.keys[Q.i];
+    if (k === target) {
+      Q.locked = true;
+      if (Q.first) { Q.correct++; }
+      Q.marks.push(Q.first);
+      node.classList.add('lit');
+      sfxGood();
+      var say = 'Betul! ' + keyInfo(k).say;
+      speak(say);
+      Q.i++;
+      drawDots();
+      later(nextQ, Math.max(1700, 600 + say.length * 75));
+    } else {
+      Q.first = false;
+      sfxWrong();
+      node.classList.remove('shake');
+      void node.offsetWidth;
+      node.classList.add('shake');
+      speak('Itu ' + nameFor(k) + '. ' + promptFor(target));
+    }
+  }
+
+  function finishCheck() {
+    var set = Q.set, n = Q.keys.length, c = Q.correct;
+    var passed = c >= n - 1;
+    var msg, say, sub = 'Betul ' + c + ' dari ' + n;
+
+    if (set.level >= 0 && passed && progress[set.track].level === set.level) {
+      var P = progress[set.track], T = TRACKS[set.track];
+      var d = today();
+      if (P.passes.indexOf(d) < 0) { P.passes.push(d); }
+      if (P.passes.length >= PASS_DAYS) {
+        P.level++;
+        P.passes = [];
+        if (P.level >= T.groups.length) {
+          msg = 'Semua ' + T.name.toLowerCase() + ' selesai!';
+          say = 'Hebat sekali! Semua ' + T.name.toLowerCase() + ' sudah bisa!';
+        } else {
+          msg = T.name + ' baru terbuka: ' + T.labels[P.level];
+          say = 'Hebat sekali! Ada ' + T.name.toLowerCase() + ' baru!';
+        }
+      } else {
+        msg = 'Lulus hari ini! Main lagi besok, ya.';
+        say = 'Hebat! Besok main lagi, ya!';
+      }
+      saveProgress();
+    } else if (passed) {
+      msg = 'Hebat!';
+      say = 'Hebat!';
+    } else {
+      msg = 'Ayo coba lagi!';
+      say = 'Ayo coba lagi!';
+    }
+
+    var stars = '';
+    for (var i = 0; i < n; i++) { stars += i < c ? '★' : '☆'; }
+    $('rstars').textContent = stars;
+    $('rmsg').textContent = msg;
+    $('rsub').textContent = sub;
+    Q = null;
+    show('result');
+    if (passed) { sfxCheer(); }
+    later(function () { speak(say); }, 300);
+  }
+
+  // ---------- parent: free board picker ----------
+
+  function openFree() {
+    $('settings').className = '';
+    $('setsTitle').textContent = 'Pilih papan';
     var list = $('setList');
     list.innerHTML = '';
-    for (var i = 0; i < def.list.length; i++) {
-      (function (set) {
-        var b = el('div', 'setb' + (set.big ? ' all' : ''), list);
-        b.style.borderColor = def.color;
-        b.textContent = set.label;
-        tap(b, function () { sfxClick(); startGame(set); });
-      })(def.list[i]);
+    var groups = [[SETS.huruf.list, SETS.huruf.color], [SETS.angka.list, SETS.angka.color],
+                  [[SETS.campur], '#43a047']];
+    for (var i = 0; i < groups.length; i++) {
+      for (var j = 0; j < groups[i][0].length; j++) {
+        (function (set, color) {
+          var b = el('div', 'setb' + (set.big ? ' all' : ''), list);
+          b.style.borderColor = color;
+          b.textContent = set.label;
+          tap(b, function () { sfxClick(); startGame(set); });
+        })(groups[i][0][j], groups[i][1]);
+      }
     }
     show('sets');
   }
@@ -781,9 +1006,56 @@
     }
   }
 
+  function refreshProg() {
+    var box = $('progRows');
+    box.innerHTML = '';
+    for (var i = 0; i < TRACK_NAMES.length; i++) {
+      (function (n) {
+        var P = progress[n], T = TRACKS[n], done = trackDone(n);
+        var row = el('div', 'prow', box);
+        var txt = el('span', 'ptxt', row);
+        txt.textContent = T.name + ': ' + (done ? 'selesai' :
+          T.labels[P.level] + ' (lulus ' + P.passes.length + ' dari ' + PASS_DAYS + ' hari)');
+
+        var up = el('span', 'pbtn' + (done ? ' off' : ''), row);
+        up.textContent = 'Naik';
+        tap(up, function () {
+          if (trackDone(n)) { return; }
+          P.level++;
+          P.passes = [];
+          saveProgress();
+          refreshProg();
+          refreshStart();
+        });
+
+        // Reset needs a second tap within three seconds.
+        var rs = el('span', 'pbtn', row);
+        rs.textContent = 'Ulang';
+        tap(rs, function () {
+          if (rs.getAttribute('data-arm')) {
+            progress[n] = { level: 0, passes: [] };
+            saveProgress();
+            refreshProg();
+            refreshStart();
+          } else {
+            rs.setAttribute('data-arm', '1');
+            rs.className = 'pbtn arm';
+            rs.textContent = 'Yakin?';
+            setTimeout(function () {
+              rs.removeAttribute('data-arm');
+              rs.className = 'pbtn';
+              rs.textContent = 'Ulang';
+            }, 3000);
+          }
+        });
+      })(TRACK_NAMES[i]);
+    }
+  }
+
   function openSettings() {
     findVoice();
     refreshOpts();
+    refreshProg();
     $('settings').className = 'on';
   }
 
@@ -801,19 +1073,42 @@
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, false);
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); }, false);
 
-    var modes = document.querySelectorAll('.big');
-    for (var i = 0; i < modes.length; i++) {
+    var tracks = document.querySelectorAll('.big[data-track]');
+    for (var i = 0; i < tracks.length; i++) {
       (function (b) {
         tap(b, function () {
-          var mode = b.getAttribute('data-mode');
           sfxClick();
           speak(b.querySelector('.bl').textContent);
-          if (mode === 'campur') { startGame(SETS.campur); } else { openSets(mode); }
+          startTrack(b.getAttribute('data-track'));
         });
-      })(modes[i]);
+      })(tracks[i]);
     }
 
-    tap($('back'), function () { sfxClick(); show('start'); });
+    var campur = $('campurBtn');
+    tap(campur, function () {
+      if (trackDone('huruf') && trackDone('angka')) {
+        sfxClick();
+        speak('Campur');
+        startGame(SETS.campur);
+      } else {
+        sfxWrong();
+        campur.classList.remove('shake');
+        void campur.offsetWidth;
+        campur.classList.add('shake');
+      }
+    });
+
+    tap($('homeC'), function () { sfxClick(); goMenu(); });
+    tap($('rep'), function () { if (Q && Q.i < Q.keys.length) { speak(promptFor(Q.keys[Q.i])); } });
+    tap($('rAgain'), function () {
+      sfxClick();
+      if (!G) { goMenu(); return; }
+      if (G.set.track) { startTrack(G.set.track); } else { startGame(G.set); }
+    });
+    tap($('rMenu'), function () { sfxClick(); goMenu(); });
+    tap($('freeBtn'), function () { sfxClick(); openFree(); });
+
+    tap($('back'), function () { sfxClick(); goMenu(); });
     tap($('home'), function () { sfxClick(); goMenu(); });
     tap($('hint'), function () { sfxClick(); hint(); });
     tap($('shuf'), function () { sfxClick(); shuffleBoard(false); });
@@ -833,6 +1128,7 @@
       });
     }
     refreshMute();
+    refreshStart();
 
     // Settings open only after holding the gear for two seconds.
     var gear = $('gear');
